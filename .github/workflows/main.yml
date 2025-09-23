@@ -75,6 +75,3 @@ jobs:
           git add ./manifests/deployment.yaml
           git commit -m "Update hello-app image to ${{ github.sha }}"
           git push
-
-
-h[a erro com o workflow? pois ja criei uma chave nova e o erro permanece
