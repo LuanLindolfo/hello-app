@@ -31,8 +31,8 @@ jobs:
         with:
           # Passa o nome de usuário do Docker Hub usando um 'secret' (variável secreta)
           username: ${{ secrets.DOCKER_USERNAME }}
-          # Passa o token de acesso do Docker Hub usando um 'secret'
-          password: ${{ secrets.DOCKER_TOKEN }}
+          # Passa a senha do Docker Hub usando um 'secret'
+          password: ${{ secrets.DOCKER_PASSWORD }}
       
       # --- Passo 3: Construir e Publicar a Imagem Docker ---
       - name: Construir e Publicar a Imagem Docker
