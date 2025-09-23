@@ -48,20 +48,16 @@ jobs:
           # Define as tags para a imagem. Serão criadas duas tags: 'latest' e a tag com o ID do commit
           tags: ${{ secrets.DOCKER_USERNAME }}/hello-app:latest,${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
 
-      # --- Passo 4: Configurar acesso SSH para o repositório de manifestos ---
-      - name: Configurar SSH
-        uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          
-      # --- Passo 5: Checkout do Repositório de Manifestos ---
+      # --- Passo 4: Checkout do Repositório de Manifestos ---
+      # Usa o token padrão para autenticar o checkout do repositório de manifestos
       - name: Checkout do Repositório de Manifestos
         uses: actions/checkout@v4
         with:
           repository: 'LuanLindolfo/hello-manifests'
           path: manifests
-          persist-credentials: false
-
+          # O token padrão do GitHub. Não precisa ser configurado como segredo
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Atualizar a Tag da Imagem no Arquivo de Manifestos
         run: |
           TAG_NAME=${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
@@ -74,4 +70,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git add ./manifests/deployment.yaml
           git commit -m "Update hello-app image to ${{ github.sha }}"
-          git push
+          # Usa a URL HTTPS com o token para autenticar o push
+          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/LuanLindolfo/hello-manifests.git HEAD:main
