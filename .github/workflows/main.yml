@@ -8,6 +8,10 @@ on:
     # Apenas quando o push for para o branch 'main'
     branches:
       - main
+  # Adicionado trigger para Pull Requests visando o branch 'main'
+  pull_request:
+    branches:
+      - main
 
 # Define os 'jobs' (tarefas) que o workflow irá executar
 jobs:
@@ -60,13 +64,14 @@ jobs:
       - name: Atualizar a Tag da Imagem no Arquivo de Manifestos
         run: |
           TAG_NAME=${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
-          sed -i "s|image: .*|image: ${TAG_NAME}|g" ./manifests/deployment.yaml
-        working-directory: .
+          sed -i "s|image: .*|image: ${TAG_NAME}|g" deployment.yaml
+        working-directory: manifests
 
       - name: Commit e Push das Alterações
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git add ./manifests/deployment.yaml
+          git add deployment.yaml
           git commit -m "Update hello-app image to ${{ github.sha }}"
           git push
+        working-directory: manifests
