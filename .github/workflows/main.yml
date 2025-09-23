@@ -8,10 +8,6 @@ on:
     # Apenas quando o push for para o branch 'main'
     branches:
       - main
-  # Adicionado trigger para Pull Requests visando o branch 'main'
-  pull_request:
-    branches:
-      - main
 
 # Define os 'jobs' (tarefas) que o workflow irá executar
 jobs:
@@ -52,26 +48,30 @@ jobs:
           # Define as tags para a imagem. Serão criadas duas tags: 'latest' e a tag com o ID do commit
           tags: ${{ secrets.DOCKER_USERNAME }}/hello-app:latest,${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
 
-      # --- Parte 4: Lidar com o Pull Request no Repositório de Manifestos ---
-      # Agora, vamos clonar o repositório de manifestos para atualizar o arquivo
+      # --- Passo 4: Configurar acesso SSH para o repositório de manifestos ---
+      - name: Configurar SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+      # --- Passo 5: Checkout do Repositório de Manifestos ---
       - name: Checkout do Repositório de Manifestos
         uses: actions/checkout@v4
         with:
           repository: 'LuanLindolfo/hello-manifests'
-          token: ${{ secrets.SSH_PRIVATE_KEY }}
           path: manifests
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Atualizar a Tag da Imagem no Arquivo de Manifestos
         run: |
           TAG_NAME=${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
-          sed -i "s|image: .*|image: ${TAG_NAME}|g" deployment.yaml
-        working-directory: manifests
+          sed -i "s|image: .*|image: ${TAG_NAME}|g" ./manifests/deployment.yaml
+        working-directory: .
 
       - name: Commit e Push das Alterações
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git add deployment.yaml
+          git add ./manifests/deployment.yaml
           git commit -m "Update hello-app image to ${{ github.sha }}"
           git push
-        working-directory: manifests
