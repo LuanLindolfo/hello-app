@@ -72,3 +72,4 @@ jobs:
           git commit -m "Update hello-app image to ${{ github.sha }}"
           # O push é feito automaticamente pelo git com as credenciais do GITHUB_TOKEN
           git push
+        working-directory: ./manifests
