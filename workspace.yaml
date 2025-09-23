@@ -1,90 +1,90 @@
-# Nome do workflow que será exibido na aba 'Actions' do GitHub
+#Nome do workflow que será exibido na aba 'Actions' do GitHub
 name: CI/CD Docker e Pull Request
 
-# Define o gatilho (trigger) para o workflow
+#Define o gatilho (trigger) para o workflow
 on:
-  # O workflow será executado a cada novo 'push'
+  #O workflow será executado a cada novo 'push'
   push:
-    # Apenas quando o push for para o branch 'main'
+    #Apenas quando o push for para o branch 'main'
     branches:
       - main
 
-# Define os 'jobs' (tarefas) que o workflow irá executar
+#Define os 'jobs' (tarefas) que o workflow irá executar
 jobs:
-  # Nome do job: 'build-and-deploy'
+  #Nome do job: 'build-and-deploy'
   build-and-deploy:
-    # O job irá rodar em um ambiente (máquina virtual) com Ubuntu na versão mais recente
+    #O job irá rodar em um ambiente (máquina virtual) com Ubuntu na versão mais recente
     runs-on: ubuntu-latest
     
-    # Define a sequência de 'steps' (passos) que o job irá executar
+    #Define a sequência de 'steps' (passos) que o job irá executar
     steps:
-    # Nome do passo, exibido na interface do GitHub Actions
+    #Nome do passo, exibido na interface do GitHub Actions
     - name: Checkout do Código
-      # Usa uma action oficial do GitHub para baixar o código do seu repositório para o runner
+      #Usa uma action oficial do GitHub para baixar o código do seu repositório para o runner
       uses: actions/checkout@v4
       
     - name: Login no Docker Hub
-      # Usa uma action para fazer login no Docker Hub
+      #Usa uma action para fazer login no Docker Hub
       uses: docker/login-action@v3
       with:
-        # Passa o nome de usuário do Docker Hub usando um 'secret' (variável secreta)
+        #Passa o nome de usuário do Docker Hub usando um 'secret' (variável secreta)
         username: ${{ secrets.DOCKER_USERNAME }}
-        # Passa o token de acesso do Docker Hub usando um 'secret'
+        #Passa o token de acesso do Docker Hub usando um 'secret'
         password: ${{ secrets.DOCKER_TOKEN }}
         
     - name: Construir e Publicar a Imagem Docker
-      # Atribui um ID a este passo para que possa ser referenciado depois (não usado neste exemplo, mas boa prática)
+      #Atribui um ID a este passo para que possa ser referenciado depois (não usado neste exemplo, mas boa prática)
       id: build-image
-      # Usa a action para construir a imagem a partir do Dockerfile e publicá-la
+      #Usa a action para construir a imagem a partir do Dockerfile e publicá-la
       uses: docker/build-push-action@v5
       with:
-        # Define o contexto de construção para a pasta atual (onde está o Dockerfile)
+        #Define o contexto de construção para a pasta atual (onde está o Dockerfile)
         context: .
-        # Indica que a imagem deve ser publicada no Docker Hub
+        #Indica que a imagem deve ser publicada no Docker Hub
         push: true
-        # Define as tags para a imagem. Serão criadas duas tags: 'latest' e a tag com o ID do commit
+        #Define as tags para a imagem. Serão criadas duas tags: 'latest' e a tag com o ID do commit
         tags: ${{ secrets.DOCKER_USERNAME }}/seu-projeto:latest,${{ secrets.DOCKER_USERNAME }}/seu-projeto:${{ github.sha }}
         
     # --- Parte 2: Lidar com o Pull Request no Repositório de Manifestos ---
     
     - name: Checkout do Repositório de Manifestos
-      # Usa a mesma action 'checkout', mas para um repositório diferente
+      #Usa a mesma action 'checkout', mas para um repositório diferente
       uses: actions/checkout@v4
       with:
-        # O repositório a ser clonado (substitua pelo seu!)
+        #O repositório a ser clonado (substitua pelo seu!)
         repository: 'seu-usuario-github/seu-repositorio-manifestos'
-        # O caminho local onde o repositório de manifestos será clonado
+        #O caminho local onde o repositório de manifestos será clonado
         path: ./manifestos
-        # O token de acesso pessoal do GitHub (PAT) necessário para acessar o outro repositório
+        #O token de acesso pessoal do GitHub (PAT) necessário para acessar o outro repositório
         token: ${{ secrets.PAT_TOKEN }}
         
     - name: Atualizar a Tag da Imagem no Arquivo de Manifestos
-      # O comando de linha de código que será executado
+      #O comando de linha de código que será executado
       run: |
-        # Define uma variável de ambiente para a nova tag da imagem
+        #Define uma variável de ambiente para a nova tag da imagem
         TAG_NAME=${{ secrets.DOCKER_USERNAME }}/seu-projeto:${{ github.sha }}
-        # Usa o comando 'sed' para buscar a tag antiga e substituí-la pela nova
-        # O 'sed -i' edita o arquivo no local; 's|...|...|g' é o comando de substituição
+        #Usa o comando 'sed' para buscar a tag antiga e substituí-la pela nova
+        #O 'sed -i' edita o arquivo no local; 's|...|...|g' é o comando de substituição
         sed -i "s|image: .*/seu-projeto:.*|image: ${TAG_NAME}|g" ./manifestos/caminho/do/seu/manifesto.yaml
-      # O diretório de trabalho para este passo
+      #O diretório de trabalho para este passo
       working-directory: .
       
     - name: Criar um Pull Request para o Repositório de Manifestos
-      # Usa uma action de terceiros para criar um Pull Request
+      #Usa uma action de terceiros para criar um Pull Request
       uses: peter-evans/create-pull-request@v6
       with:
-        # O token necessário para criar o PR no outro repositório
+        #O token necessário para criar o PR no outro repositório
         token: ${{ secrets.PAT_TOKEN }}
         # A mensagem do commit que será criado
         commit-message: 'feat: Atualiza a imagem para ${{ github.sha }}'
-        # O título do Pull Request
+        #O título do Pull Request
         title: 'Atualiza Imagem Docker'
-        # O corpo (descrição) do Pull Request
+        #O corpo (descrição) do Pull Request
         body: |
           Esta é uma atualização automática da imagem Docker para o commit `${{ github.sha }}`.
-        # O nome do novo branch que será criado para o Pull Request
+        #O nome do novo branch que será criado para o Pull Request
         branch: update-image-${{ github.run_number }}
         # Os arquivos modificados que devem ser incluídos no PR
         add-paths: 'manifestos/caminho/do/seu/manifesto.yaml'
-        # O branch de destino para o Pull Request
+        #O branch de destino para o Pull Request
         base: 'main'
