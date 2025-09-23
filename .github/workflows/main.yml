@@ -44,15 +44,16 @@ jobs:
         with:
           repository: 'LuanLindolfo/hello-manifests'
           path: manifests
-          token: ${{ secrets.GITHUB_TOKEN }}
+          # CORREÇÃO: Usa o token com permissão de escrita para o outro repositório
+          token: ${{ secrets.MANIFESTS_TOKEN }}
           
       # --- Passo 5: Atualizar a Tag da Imagem no Arquivo de Manifestos ---
       - name: Atualizar a Tag da Imagem no Arquivo de Manifestos
         run: |
           TAG_NAME=${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
-          # Agora o comando procura por 'deployment.yaml' no diretório atual
+          # CORREÇÃO: O comando sed agora procura o arquivo no diretório atual
           sed -i "s|image: .*|image: ${TAG_NAME}|g" deployment.yaml
-        # **AQUI ESTÁ A PRIMEIRA CORREÇÃO:** Muda o diretório de trabalho para a pasta 'manifests'
+        # CORREÇÃO: Muda o diretório de trabalho para a pasta 'manifests'
         working-directory: ./manifests
 
       # --- Passo 6: Commit e Push das Alterações ---
@@ -63,5 +64,5 @@ jobs:
           git add deployment.yaml
           git commit -m "Update hello-app image to ${{ github.sha }}"
           git push
-        # **AQUI ESTÁ A SEGUNDA CORREÇÃO:** Muda o diretório de trabalho para a pasta 'manifests'
+        # CORREÇÃO: Muda o diretório de trabalho para a pasta 'manifests'
         working-directory: ./manifests
