@@ -60,7 +60,7 @@ jobs:
         with:
           repository: 'LuanLindolfo/hello-manifests'
           path: manifests
-          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          persist-credentials: false
 
       - name: Atualizar a Tag da Imagem no Arquivo de Manifestos
         run: |
