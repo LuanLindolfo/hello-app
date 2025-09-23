@@ -1,77 +1,95 @@
-# Nome do workflow que será exibido na aba 'Actions' do GitHub
 name: CI/CD Docker e Pull Request
 
-# Define o gatilho (trigger) para o workflow
 on:
-  # O workflow será executado a cada novo 'push'
   push:
-    # Apenas quando o push for para o branch 'main'
-    branches:
-      - main
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]  # Adicionado para suportar PRs
 
-# Define os 'jobs' (tarefas) que o workflow irá executar
 jobs:
-  # Nome do job: 'build-and-deploy'
   build-and-deploy:
-    # O job irá rodar em um ambiente (máquina virtual) com Ubuntu na versão mais recente
     runs-on: ubuntu-latest
-    
-    # Define a sequência de 'steps' (passos) que o job irá executar
     steps:
-      # --- Passo 1: Checkout do Código da Aplicação ---
-      # Nome do passo, exibido na interface do GitHub Actions
       - name: Checkout do Código da Aplicação
-        # Usa uma action oficial do GitHub para baixar o código do seu repositório para o runner
         uses: actions/checkout@v4
       
-      # --- Passo 2: Login no Docker Hub ---
       - name: Login no Docker Hub
-        # Usa uma action para fazer login no Docker Hub
         uses: docker/login-action@v3
         with:
-          # Passa o nome de usuário do Docker Hub usando um 'secret' (variável secreta)
           username: ${{ secrets.DOCKER_USERNAME }}
-          # Passa a senha do Docker Hub usando um 'secret'
           password: ${{ secrets.DOCKER_TOKEN }}
       
-      # --- Passo 3: Construir e Publicar a Imagem Docker ---
       - name: Construir e Publicar a Imagem Docker
-        # Atribui um ID a este passo para que possa ser referenciado depois
         id: build-image
-        # Usa a action para construir a imagem a partir do Dockerfile e publicá-la
         uses: docker/build-push-action@v5
         with:
-          # Define o contexto de construção para a pasta atual
           context: .
-          # Indica que a imagem deve ser publicada no Docker Hub
-          push: true
-          # Define as tags para a imagem. Serão criadas duas tags: 'latest' e a tag com o ID do commit
-          tags: ${{ secrets.DOCKER_USERNAME }}/hello-app:latest,${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
-
-      # --- Passo 4: Configurar acesso SSH para o repositório de manifestos ---
+          push: ${{ github.event_name != 'pull_request' }}  # Não push em PRs
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/hello-app:latest,${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
+          cache-from: type=gha  # Cache para builds rápidas
+          cache-to: type=gha,mode=max
+      
+      - name: Debug SSH Key (Temporário - Remova Após Testar)
+        if: github.event_name == 'push'
+        run: |
+          KEY_CONTENT="${{ secrets.SSH_PRIVATE_KEY }}"
+          if [ -z "$KEY_CONTENT" ]; then
+            echo "ERRO: SSH_PRIVATE_KEY vazio!"
+            exit 1
+          fi
+          echo "Tamanho da chave: $(echo "$KEY_CONTENT" | wc -c) caracteres"
+          echo "$KEY_CONTENT" | head -1 | grep -q "BEGIN.*PRIVATE KEY"
+          if [ $? -ne 0 ]; then
+            echo "ERRO: Formato inválido!"
+            exit 1
+          fi
+          echo "Chave OK."
+      
       - name: Configurar SSH
-        uses: webfactory/ssh-agent@v0.5.3
+        if: github.event_name == 'push'
+        uses: webfactory/ssh-agent@v0.9.0  # Atualizado para versão estável
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-          
-      # --- Passo 5: Checkout do Repositório de Manifestos ---
+          ssh-options: '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'  # Evita prompts de host
+      
       - name: Checkout do Repositório de Manifestos
+        if: github.event_name == 'push'
         uses: actions/checkout@v4
         with:
           repository: 'LuanLindolfo/hello-manifests'
           path: manifests
           persist-credentials: false
-
+          token: ${{ secrets.GITHUB_TOKEN }}  # Para fetch seguro
+      
       - name: Atualizar a Tag da Imagem no Arquivo de Manifestos
+        if: github.event_name == 'push'
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
-          TAG_NAME=${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
+          if [ -z "$DOCKER_USERNAME" ]; then
+            echo "ERRO: DOCKER_USERNAME vazio!"
+            exit 1
+          fi
+          TAG_NAME="${DOCKER_USERNAME}/hello-app:${GITHUB_SHA}"
           sed -i "s|image: .*|image: ${TAG_NAME}|g" ./manifests/deployment.yaml
         working-directory: .
-
+      
       - name: Commit e Push das Alterações
+        if: github.event_name == 'push'
+        working-directory: ./manifests  # CORREÇÃO: Roda no repo de manifests
+        env:
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git add ./manifests/deployment.yaml
-          git commit -m "Update hello-app image to ${{ github.sha }}"
-          git push
+          # CORREÇÃO: Configura remote para o repo correto via SSH
+          git remote set-url origin git@github.com:LuanLindolfo/hello-manifests.git
+          git add deployment.yaml
+          if git diff --staged --quiet; then
+            echo "Nenhuma mudança para commitar."
+          else
+            git commit -m "Update hello-app image to ${GITHUB_SHA} [skip ci]"  # Evita loop
+            git push origin main  # Assume branch 'main'; ajuste se necessário
+          fi
