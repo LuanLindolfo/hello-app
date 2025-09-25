@@ -1,4 +1,4 @@
-#Nome do workflow 
+#Nome do workflow 
 name: CI/CD Docker e Pull Request
 
 #Define o gatilho (trigger) para o workflow
@@ -9,25 +9,25 @@ on:
   pull_request:
     branches:
       - main
-  
+  
 #Define os 'jobs' que o workflow irá executar
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
-    #'steps' (passos)
-    steps:
+    
+    #'steps' (passos)
+    steps:
       #Checkout do Código da Aplicação
       - name: Checkout do Código da Aplicação
         uses: actions/checkout@v4
-      
+      
       #Login no Docker Hub com as variáveis secretas
       - name: Login no Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
-      
+      
       #Construir e Publicar a Imagem Docker
       - name: Construir e Publicar a Imagem Docker
         id: build-image
@@ -45,7 +45,7 @@ jobs:
           path: manifests
           #Usa o token com permissão de escrita para o outro repositório
           token: ${{ secrets.MANIFESTS_TOKEN }}
-          
+          
       #Atualizar a Tag da Imagem no Arquivo de Manifestos
       - name: Atualizar a Tag da Imagem no Arquivo de Manifestos
         run: |
