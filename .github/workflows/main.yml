@@ -3,63 +3,65 @@ name: CI/CD Docker e Pull Request
 
 #Define o gatilho (trigger) para o workflow
 on:
-  workflow_dispatch:
-  pull_request:
-    branches:
-      - main
+  # O workflow pode ser acionado manualmente na aba 'Actions'
+  workflow_dispatch:
+  # O workflow será acionado em cada 'pull request'
+  pull_request:
+    branches:
+      - main
   
 #Define os 'jobs' que o workflow irá executar
 jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
+  build-and-deploy:
+    runs-on: ubuntu-latest
     
     #'steps' (passos)
     steps:
-      #Checkout do Código da Aplicação
-      - name: Checkout do Código da Aplicação
-        uses: actions/checkout@v4
+      #Checkout do Código da Aplicação
+      - name: Checkout do Código da Aplicação
+        uses: actions/checkout@v4
       
-      #Login no Docker Hub com as variáveis secretas
-      - name: Login no Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
+      #Login no Docker Hub com as variáveis secretas
+      - name: Login no Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
       
-      #Construir e Publicar a Imagem Docker
-      - name: Construir e Publicar a Imagem Docker
-        id: build-image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/hello-app:latest,${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
+      #Construir e Publicar a Imagem Docker
+      - name: Construir e Publicar a Imagem Docker
+        id: build-image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/hello-app:latest,${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
 
-      #Checkout do Repositório de Manifestos
-      - name: Checkout do Repositório de Manifestos
-        uses: actions/checkout@v4
-        with:
-          repository: 'LuanLindolfo/hello-manifests'
-          path: manifests
-          #Usa o token com permissão de escrita para o outro repositório
-          token: ${{ secrets.MANIFESTS_TOKEN }}
+      #Checkout do Repositório de Manifestos
+      - name: Checkout do Repositório de Manifestos
+        uses: actions/checkout@v4
+        with:
+          repository: 'LuanLindolfo/hello-manifests'
+          path: manifests
+          #Usa o token com permissão de escrita para o outro repositório
+          token: ${{ secrets.MANIFESTS_TOKEN }}
           
-      #Atualizar a Tag da Imagem no Arquivo de Manifestos
-      - name: Atualizar a Tag da Imagem no Arquivo de Manifestos
-        run: |
-          TAG_NAME=${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
-          # CORREÇÃO: O comando sed agora procura o arquivo no diretório atual
-          sed -i "s|image: .*|image: ${TAG_NAME}|g" deployment.yaml
-        #Muda o diretório de trabalho para a pasta 'manifests'
-        working-directory: ./manifests
+      #Atualizar a Tag da Imagem no Arquivo de Manifestos
+      - name: Atualizar a Tag da Imagem no Arquivo de Manifestos
+        run: |
+          TAG_NAME=${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
+          # CORREÇÃO: O comando sed agora procura o arquivo no diretório atual
+          sed -i "s|image: .*|image: ${TAG_NAME}|g" deployment.yaml
+        #Muda o diretório de trabalho para a pasta 'manifests'
+        working-directory: ./manifests
 
-      #Commit e Push das Alterações
-      - name: Commit e Push das Alterações
-        run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git add deployment.yaml
-          git commit -m "Update hello-app image to ${{ github.sha }}"
-          git push
-        #Muda o diretório de trabalho para a pasta 'manifests'
-        working-directory: ./manifests
+      #Commit e Push das Alterações
+      - name: Commit e Push das Alterações
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git add deployment.yaml
+          git commit -m "Update hello-app image to ${{ github.sha }}"
+          git push
+        #Muda o diretório de trabalho para a pasta 'manifests'
+        working-directory: ./manifests
