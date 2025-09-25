@@ -3,9 +3,9 @@ name: CI/CD Docker e Pull Request
 
 #Define o gatilho (trigger) para o workflow
 on:
-  # O workflow pode ser acionado manualmente na aba 'Actions'
-  workflow_dispatch:
-  # O workflow será acionado em cada 'pull request'
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
