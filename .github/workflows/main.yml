@@ -50,7 +50,6 @@ jobs:
       - name: Atualizar a Tag da Imagem no Arquivo de Manifestos
         run: |
           TAG_NAME=${{ secrets.DOCKER_USERNAME }}/hello-app:${{ github.sha }}
-          # CORREÇÃO: O comando sed agora procura o arquivo no diretório atual
           sed -i "s|image: .*|image: ${TAG_NAME}|g" deployment.yaml
         #Muda o diretório de trabalho para a pasta 'manifests'
         working-directory: ./manifests
