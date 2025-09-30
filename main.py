@@ -2,4 +2,4 @@ from fastapi import FastAPI
 app=FastAPI()
 @app.get("/")
 async def root():
-    return {"message": "Trabalho em funcionamento!"}
+    return {"message": "Em funcionamento!"}
